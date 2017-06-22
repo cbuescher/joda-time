@@ -17,14 +17,16 @@ package org.joda.time.format;
 
 import java.util.Locale;
 
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
-
 import org.joda.time.Chronology;
+import org.joda.time.DateTime;
 import org.joda.time.DateTimeFieldType;
 import org.joda.time.DateTimeZone;
+import org.joda.time.MutableDateTime;
 import org.joda.time.chrono.BuddhistChronology;
 import org.joda.time.chrono.ISOChronology;
+
+import junit.framework.TestCase;
+import junit.framework.TestSuite;
 
 /**
  * Test.
@@ -128,6 +130,21 @@ public class TestDateTimeParserBucket extends TestCase {
         assertEquals(5 * MILLIS_PER_HOUR + 100 - OFFSET_0400, test.computeMillis(false));
         assertEquals(5 * MILLIS_PER_HOUR - OFFSET_0400, test.computeMillis(true));
         assertEquals(5 * MILLIS_PER_HOUR + 100 - OFFSET_0400, test.computeMillis(false));
+    }
+
+    public void testSaveMaxLongCompute() {
+        MutableDateTime date = new MutableDateTime(1970, 1, 1, 23, 59, 59, 999, DateTimeZone.UTC);
+        DateTimeParserBucket bucket = new DateTimeParserBucket(date.getMillis(), ISO_UTC, LOCALE, 0, 0);
+        DateTime dt = new DateTime(Long.MAX_VALUE, DateTimeZone.UTC);
+        bucket.saveField(DateTimeFieldType.millisOfSecond(), dt.getMillisOfSecond());
+        bucket.saveField(DateTimeFieldType.secondOfMinute(), dt.getSecondOfMinute());
+        bucket.saveField(DateTimeFieldType.minuteOfHour(), dt.getMinuteOfHour());
+        bucket.saveField(DateTimeFieldType.hourOfDay(), dt.getHourOfDay());
+        bucket.saveField(DateTimeFieldType.dayOfMonth(), dt.getDayOfMonth());
+        bucket.saveField(DateTimeFieldType.monthOfYear(), dt.getMonthOfYear());
+        bucket.saveField(DateTimeFieldType.year(), dt.getYear());
+        bucket.setZone(DateTimeZone.UTC);
+        assertEquals(Long.MAX_VALUE, bucket.computeMillis());
     }
 
     public void testSaveRestoreState() {
@@ -254,14 +271,14 @@ public class TestDateTimeParserBucket extends TestCase {
         assertEquals((Integer) 2000, test.getPivotYear());
         assertEquals(null, test.getOffsetInteger());
         assertEquals(ZONE_0400, test.getZone());
-        
+
         test.setOffset((Integer) 200);
         test.setZone(LONDON);
         test.saveField(DateTimeFieldType.hourOfDay(), 2);
         assertEquals(2 * MILLIS_PER_HOUR + 100 - 200, test.computeMillis(false));
         assertEquals((Integer) 200, test.getOffsetInteger());
         assertEquals(LONDON, test.getZone());
-        
+
         test.reset();
         assertEquals(ISO_UTC, test.getChronology());
         assertEquals(LOCALE, test.getLocale());
@@ -274,11 +291,13 @@ public class TestDateTimeParserBucket extends TestCase {
     public void testParse() {
         DateTimeParserBucket test = new DateTimeParserBucket(0, ISO_0400, LOCALE, 2000, 2000);
         DateTimeParser parser = new DateTimeParser() {
+            @Override
             public int parseInto(DateTimeParserBucket bucket, String text, int position) {
                 bucket.saveField(DateTimeFieldType.hourOfDay(), 2);
                 bucket.saveField(DateTimeFieldType.minuteOfHour(), 6);
                 return position + 1;
             }
+            @Override
             public int estimateParsedLength() {
                 return 1;
             }
